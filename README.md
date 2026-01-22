@@ -23,20 +23,27 @@ The project follows a decoupled architecture to ensure smooth 3D rendering indep
 
 ```mermaid
 graph TD
-    User[User / Manager] -->|Interacts| Frontend
-    subgraph "The View (Frontend)"
-        Frontend[React + R3F]
-        State[Zustand Store]
-        Visuals[3D Scene / Rooms]
+    %% Nodes
+    User([User / Manager])
+    UI[Frontend: React + R3F]
+    Store[State: Zustand]
+    API[Backend: FastAPI]
+    Crew[Orchestrator: CrewAI]
+    Ollama[AI Engine: Ollama]
+    FS[FileSystem: Workspace]
+
+    %% Flow
+    User -->|Interacts via 3D| UI
+    
+    subgraph "The View"
+        UI <-->|Sync State| Store
+    end
+
+    UI <-->|WebSockets| API
+    
+    subgraph "The Brain"
+        API -->|Delegates Task| Crew
+        Crew -->|Read/Write Code| FS
     end
     
-    Frontend <-->|WebSockets (Real-time)| Backend
-    
-    subgraph "The Brain (Backend)"
-        Backend[Python / FastAPI]
-        Orchestrator[Agent Logic / CrewAI]
-        Memory[Local Vector DB]
-    end
-    
-    Orchestrator <-->|Inference| Ollama[Ollama (Local LLM)]
-    Orchestrator -->|Read/Write| FileSystem[Local Files / Code]
+    Crew <-->|Inference| Ollama
