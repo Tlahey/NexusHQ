@@ -8,7 +8,7 @@
 ![AI](https://img.shields.io/badge/AI-Ollama_Local-orange)
 
 <div align="center">
-  <img src="docs/screenshot-mockup.png" alt="NexusHQ Interface" width="100%" />
+  <img src="nexusHQ_1.jpg" alt="NexusHQ Interface" width="100%" />
 </div>
 
 ## 💡 The Vision
@@ -36,38 +36,49 @@ Instead of prompting a black box, you:
 NexusHQ uses a decoupled architecture to handle heavy AI logic without freezing the 3D interface.
 
 ```mermaid
-graph TD
-    User([User])
-    
-    subgraph "Frontend (The View)"
+flowchart TD
+    %% Actors
+    User([User / Manager])
+
+    %% Frontend Cluster
+    subgraph Frontend ["Frontend (The View)"]
+        direction TB
         UI[React Flow: BPMN Builder]
         HUD[RPG Inspector Panel]
         Sim[R3F: 3D Simulation]
     end
 
-    subgraph "Backend (The Brain)"
+    %% Backend Cluster
+    subgraph Backend ["Backend (The Brain)"]
+        direction TB
         API[FastAPI]
         Graph[LangGraph Engine]
         Crew[CrewAI Agents]
     end
 
-    subgraph "External / Local Tools"
-        Ollama[Ollama (Llama-3/Mistral)]
+    %% Tools Cluster
+    subgraph Tools ["External / Local Tools"]
+        direction TB
+        Ollama[Ollama Local AI]
         GitHub[GitHub API]
         FS[Local FileSystem]
     end
 
-    User -->|Designs| UI
-    UI -->|JSON Config| API
-    API -->|Executes| Graph
-    Graph -->|Spawns| Crew
+    %% Relationships
+    User -->|1. Designs Workflow| UI
+    User -->|2. Configures Agents| HUD
+    
+    UI -->|3. JSON Config| API
+    HUD -->|Updates| API
+
+    API -->|4. Starts| Graph
+    Graph -->|5. Orchestrates| Crew
     
     Crew <-->|Inference| Ollama
-    Crew -->|Commit/PR| GitHub
+    Crew -->|Commit / PR| GitHub
     Crew -->|Write Code| FS
     
-    Graph -->|Real-time Events| Sim
-
+    Graph -.->|Real-time Events| Sim
 ```
 
 ## 🔄 The Core Workflow
@@ -169,7 +180,4 @@ Feel free to open issues for new "Skins", "Skills", or architectural improvement
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
-```
-
 ```
