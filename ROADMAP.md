@@ -1,125 +1,131 @@
 # 🗺️ Project Roadmap: NexusHQ
 
-This document outlines the step-by-step development plan for **NexusHQ**.
-**Goal:** Build a spatial 3D interface to orchestrate autonomous AI agents using a visual BPMN editor and RPG-style character configuration.
+**Goal:** Build a spatial 3D interface to orchestrate autonomous AI agents using a visual BPMN editor, RPG-style character configuration, and real-world GitHub integration.
 
 ---
 
-## 🏁 Phase 1: Infrastructure & "Hello World"
-**Objective:** Set up the monorepo environment and ensure the local stack communicates correctly.
+## 🏁 Phase 1: Infrastructure & Foundation
+**Objective:** Set up the monorepo and ensure the "Hello World" communication works between the 3D scene and the Local AI.
 
 - [ ] **1.1. Project Initialization**
-    - Create Monorepo structure (`/frontend`, `/backend`).
-    - Initialize Git repository with `.gitignore`.
-    - Set up `docker-compose.yml` (optional) for orchestrating services.
+    - [ ] Create Monorepo structure (`/frontend`, `/backend`).
+    - [ ] Initialize Git repository & `.gitignore`.
+    - [ ] Set up `docker-compose.yml` (optional) for services (Redis, etc.).
 
-- [ ] **1.2. Backend Setup (FastAPI + Ollama)**
-    - Install Python dependencies (`fastapi`, `uvicorn`, `langchain`, `langgraph`, `crewai`).
-    - **Task:** Create a script `test_ollama.py` to verify connection to local Ollama (Llama 3).
-    - Create the `./workspace` directory for agents to write files.
+- [ ] **1.2. Backend Setup (FastAPI + LangGraph)**
+    - [ ] Install dependencies (`fastapi`, `uvicorn`, `langchain`, `langgraph`, `crewai`).
+    - [ ] Create `test_ollama.py` to verify connection to local models (Llama 3).
+    - [ ] Create the `./workspace` directory for agents to write files.
 
 - [ ] **1.3. Frontend Setup (React + Vite)**
-    - Initialize React project.
-    - Install core libraries: `reactflow` (BPMN), `@react-three/fiber` (3D), `zustand` (State).
-    - Setup TailwindCSS for the UI overlay.
+    - [ ] Initialize React project.
+    - [ ] Install core libs: `reactflow` (BPMN), `@react-three/fiber` (3D), `zustand` (State).
+    - [ ] Setup TailwindCSS for the UI overlay.
 
 - [ ] **1.4. The First Handshake**
-    - Create a WebSocket endpoint in FastAPI (`/ws`).
-    - Connect React to the WebSocket.
-    - **Goal:** Send a "Ping" from the React client and receive a "Pong" from the Python server.
+    - [ ] Create a WebSocket endpoint in FastAPI (`/ws`).
+    - [ ] Connect React to the WebSocket.
+    - [ ] **Milestone:** Send a "Ping" from React, receive "Pong" from Python.
 
 ---
 
 ## 🧠 Phase 2: The Graph Engine (Backend)
-**Objective:** Move from hardcoded scripts to a dynamic graph execution engine (LangGraph).
+**Objective:** Replace linear scripts with a dynamic Graph Compiler using LangGraph.
 
 - [ ] **2.1. The JSON Protocol**
-    - Define the JSON Schema for a workflow: `nodes` (agents), `edges` (links), and `config`.
-    - Create a parser in Python that reads this JSON and constructs a `LangGraph` object.
+    - [ ] Define the JSON Schema: `nodes` (agents), `edges` (links), and `config`.
+    - [ ] Create `graph_compiler.py`: A parser that reads JSON and builds a `StateGraph` object dynamically.
 
 - [ ] **2.2. Dynamic Agent Factory**
-    - Create a function that instantiates `CrewAI` agents on the fly based on incoming parameters (Role, Goal, Model).
-    - **The "Ralph" Logic:** Implement a middleware that checks if `use_ralph_protocol` is true. If yes, wrap the agent's output in a validation loop.
+    - [ ] Create a factory function to spawn Agents based on config (Role, System Prompt).
+    - [ ] **The "Ralph" Logic:** Implement a conditional edge in LangGraph that checks output quality. If rejected, loop back to the previous node.
 
-- [ ] **2.3. Tool Implementation**
-    - **Core Tools:** `FileRead`, `FileWrite`.
-    - **Advanced Tools:** `WebSearch` (DuckDuckGo), `PythonRepl` (for code execution).
+- [ ] **2.3. Tool Implementation (Skills)**
+    - [ ] **FileSystem:** `FileRead`, `FileWrite`.
+    - [ ] **Design:** `HtmlMockupGenerator` (Returns raw HTML/Tailwind string).
+    - [ ] **Code:** `PythonRepl` (Safe execution).
 
 ---
 
-## 🎮 Phase 3: The Builder Interface (RPG Style)
+## 🎮 Phase 3: The Builder Interface (Frontend 2D)
 **Objective:** Build the "Character Creator" and the Node Editor. This is the core UX.
 
 - [ ] **3.1. The Canvas (React Flow)**
-    - Implement the drag-and-drop workspace.
-    - Create custom Node components:
-        - `AgentNode`: Represents an AI worker.
-        - `StartNode` / `EndNode`.
+    - [ ] Implement the drag-and-drop workspace.
+    - [ ] Create custom Node components: `AgentNode`, `StartNode`, `EndNode`.
 
-- [ ] **3.2. The "Inspector" Panel (Drawer)**
-    - Build a sliding side-panel that opens when a Node is clicked.
-    - Implement Tabs: **Identity**, **Brain**, **Skills**.
+- [ ] **3.2. The "Inspector" Panel (RPG Style)**
+    - [ ] Build a sliding side-panel (Drawer) triggered on Node click.
+    - [ ] **Tab 1: Identity & Skin:** Carousel to select 3D models (Robot, Suit, Hoodie).
+    - [ ] **Tab 2: Brain:** Markdown editor for the System Prompt (Backstory).
+    - [ ] **Tab 3: Skills:** Visual grid to toggle tools (Git, Python, Search) and the "Ralph Protocol" switch.
 
-- [ ] **3.3. Tab 1: Identity & Visuals (Skins)**
-    - **Skin Selector:** A carousel to choose the agent's 3D look (e.g., *Cyberpunk Dev*, *Corporate Suit*, *Robot*).
-    - **Name & Role:** Input fields for "Persona Name" and "Job Title".
-
-- [ ] **3.4. Tab 2: Brain (Markdown Context)**
-    - Integrate a text editor (Monaco or simple textarea).
-    - Allow users to write the "Backstory" or specific instructions in Markdown (e.g., *"You are a Senior React Dev, you hate jQuery"*).
-
-- [ ] **3.5. Tab 3: The Skill Tree**
-    - **UI:** Create a visual grid of icons (Hexagonal or Tree).
-    - **Logic:** Clicking an icon adds the tool to the agent's config.
-    - **The Ralph Switch:** A special toggle button: *"Enable Ralph Code Validation"*. When active, this agent's work will be double-checked.
+- [ ] **3.3. Graph Serialization**
+    - [ ] Implement `Export to JSON` function to send the blueprint to the Backend.
 
 ---
 
-## 🎨 Phase 4: The 3D Simulation (Visualization)
+## 🎨 Phase 4: The 3D Simulation (Frontend 3D)
 **Objective:** Build the "Office" where the graph comes to life.
 
 - [ ] **4.1. The Environment**
-    - Create a `Room.jsx` component using R3F.
-    - Add environmental lighting and a floor grid.
+    - [ ] Create `Room.jsx` (Floor, Walls, Lighting).
+    - [ ] Implement Camera controls (Orbit + Focus on active agent).
 
-- [ ] **4.2. 3D Avatars & Skins**
-    - Import low-poly models corresponding to the skins chosen in Phase 3.
-    - Create an `AgentAvatar.jsx` component that accepts a `skinId` prop.
+- [ ] **4.2. 3D Avatars**
+    - [ ] Import low-poly models (KayKit or similar).
+    - [ ] Create `AgentAvatar.jsx` that accepts a `skin_id` prop.
 
-- [ ] **4.3. State Visuals**
-    - Add animations/indicators for agent states:
-        - 💤 **Idle:** Standing still.
-        - 💡 **Thinking:** Pulsing halo / "..." bubble.
-        - ⌨️ **Working:** Typing animation.
-        - 🚨 **Error/Ralph Reject:** Red alert symbol.
-
----
-
-## 🔗 Phase 5: Integration (The Wiring)
-**Objective:** Connect the 2D Builder to the 3D Simulation via the Backend.
-
-- [ ] **5.1. The "Build" Button**
-    - Action: User clicks "Run Simulation" in the 2D Editor.
-    - Result: The JSON graph is sent to the Backend, and the view switches to the 3D Room.
-
-- [ ] **5.2. Real-Time Event Mapping**
-    - **Backend:** Emit WebSocket events during LangGraph execution (`NODE_ENTER`, `TOOL_USE`, `NODE_EXIT`).
-    - **Frontend:** Listen to events and trigger 3D animations (e.g., Agent A throws a "packet" to Agent B).
-
-- [ ] **5.3. The Console (HUD)**
-    - Create a terminal overlay to show the raw logs ("Thinking...", "File saved to /workspace").
+- [ ] **4.3. Real-Time Animations**
+    - [ ] Listen to WebSocket events (`NODE_ACTIVE`, `ERROR`, `SUCCESS`).
+    - [ ] Trigger animations:
+        - 💤 **Idle:** Standing.
+        - ⌨️ **Working:** Typing at desk.
+        - 🚨 **Ralph Reject:** Red strobe light / Alarm animation.
 
 ---
 
-## ✨ Phase 6: Polish & Persistence
-**Objective:** Make it usable for real projects.
+## 🖌️ Phase 5: The Designer Loop & Artifacts
+**Objective:** Enable the "Design First" workflow with visual feedback.
 
-- [ ] **6.1. Save/Load System**
-    - Save the BPMN graph layout to `localStorage` or a local JSON file.
-    - Allow loading previous "Team Configurations".
+- [ ] **5.1. The Designer Persona**
+    - [ ] Configure the default "Designer" prompt (Focus on TailwindCSS/HTML).
+    - [ ] Implement the `PO <-> Designer` loop in the backend (Textual analysis of HTML).
 
-- [ ] **6.2. Custom Assets**
-    - Allow users to add their own `.glb` models for avatars.
+- [ ] **5.2. Artifact Viewer (UI)**
+    - [ ] Create a "TV Screen" or "Preview Modal" in the 3D scene.
+    - [ ] When the Designer generates HTML, render it safely in an `<iframe>`.
+    - [ ] Add a "Human Approve/Reject" button to gate the workflow.
 
-- [ ] **6.3. Documentation**
-    - Write a "Getting Started" guide to creating your first Autonomous Squad.
+---
+
+## 🐙 Phase 6: Real World Impact (GitHub)
+**Objective:** Move from simulation to real repository contribution.
+
+- [ ] **6.1. Auth Manager**
+    - [ ] UI: Settings panel to input `GITHUB_TOKEN`.
+    - [ ] Backend: Secure storage (Env var or encrypted).
+
+- [ ] **6.2. The GitHub Skillset (PyGithub)**
+    - [ ] `IssueTool`: Create GitHub Issues from PO specs.
+    - [ ] `PullRequestTool`: Create branches, commit code, open PRs.
+    - [ ] `ReviewTool`: Post comments on PR diffs (QA Agent).
+
+- [ ] **6.3. The End-to-End Flow**
+    - [ ] Test a full run: Idea -> Design Mockup -> Code -> PR Created.
+
+---
+
+## ✨ Phase 7: Polish & Persistence
+**Objective:** Make it production-ready.
+
+- [ ] **7.1. Save/Load System**
+    - [ ] Save graph layouts to `localStorage` or local `.json` files.
+    - [ ] "Team Presets": Load a standard "SaaS Startup Team" config.
+
+- [ ] **7.2. Logs & Console**
+    - [ ] Build a "Matrix-style" scrolling terminal in the HUD to see raw LLM thoughts.
+
+- [ ] **7.3. Documentation**
+    - [ ] Write a "Getting Started" guide.
+    - [ ] Record a demo video.
