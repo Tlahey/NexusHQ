@@ -1,10 +1,3 @@
-Voici le fichier `README.md` complet et définitif. Il intègre toutes nos discussions : l'architecture BPMN, l'interface 3D, la configuration style RPG, le Designer Agent, et l'intégration GitHub.
-
-Tu peux copier-coller ce bloc directement à la racine de ton projet.
-
----
-
-```markdown
 # 🏢 NexusHQ
 
 > **Stop chatting with AI. Start managing a workforce.**
