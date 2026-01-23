@@ -1,171 +1,201 @@
-# 🏗️ Technical Architecture & Stack
+# 🏗️ NexusHQ Architecture
 
-This document details the technology choices, software architecture, and data flows for **NexusHQ**.
+This document describes the internal engineering of NexusHQ.
+The system is built on a **Decoupled Event-Driven Architecture**: the Frontend visualizes the state, while the Backend executes the graph logic.
 
-## 🔭 Overview
+---
 
-The project relies on a **decoupled client-server architecture** designed for modular workflow creation (BPMN) and 3D immersive visualization.
+## 🔭 High-Level Overview
 
-* **Frontend:** A dual-mode SPA: **Blueprint Mode** (React Flow Editor) and **Simulation Mode** (3D Render).
-* **Backend:** A dynamic graph engine capable of executing custom, user-defined agent workflows on the fly.
-* **AI Engine:** Pure local inference via Ollama.
+We treat the AI workflow as a **State Graph**.
+Instead of a linear script, the backend builds a directed cyclic graph (DAG) where nodes are Agents and edges are Logic (Conditionals).
 
 ```mermaid
-graph TD
-    subgraph "Frontend (React)"
-        Editor[React Flow: BPMN Builder]
-        Inspector[UI: RPG Config Panel]
-        Visualizer[R3F: 3D Simulation]
-        Store[Zustand: Global State]
+flowchart TD
+    %% Zones
+    subgraph Client ["Frontend (React)"]
+        direction TB
+        Builder[BPMN Editor]
+        Sim[3D Simulation]
+        SocketClient[WS Client]
     end
 
-    subgraph "Backend (Python)"
-        API[FastAPI]
-        GraphEngine[LangGraph: Execution Engine]
-        AgentFactory[CrewAI: Agent Spawner]
+    subgraph Server ["Backend (Python)"]
+        direction TB
+        API[FastAPI Router]
+        Compiler[Graph Compiler]
+        Engine[LangGraph Executor]
+        SocketServer[WS Manager]
     end
 
-    User([User]) -->|Designs Workflow| Editor
-    User -->|Configures Stats| Inspector
+    subgraph Logic ["The Brain"]
+        direction TB
+        Memory[State / Checkpoints]
+        LLM[Ollama Interface]
+    end
+
+    %% Flow
+    Builder -->|1. JSON Blueprint| API
+    API -->|2. Parse Config| Compiler
+    Compiler -->|3. Build StateGraph| Engine
     
-    Editor & Inspector -->|JSON Blueprint| API
+    Engine <-->|4. Read/Write| Memory
+    Engine <-->|5. Inference| LLM
     
-    API -->|Builds Graph| GraphEngine
-    GraphEngine -->|Instantiates| AgentFactory
-    AgentFactory <-->|Inference| Ollama[Ollama Service]
-    
-    GraphEngine -->|Real-time Events| Visualizer
-```
-
----
-
-## 🎨 1. Frontend (The Builder & Visualizer)
-
-We use a split-view approach: **Design** (2D) and **Observe** (3D).
-
-| Component | Technology | Role |
-| --- | --- | --- |
-| **BPMN Editor** | **React Flow** | The node-based interface to design workflows, drag & drop agents, and connect logic. |
-| **Inspector UI** | **Radix UI** | The side-panel (Drawer) to configure Agent skins, Markdown context, and Skill Trees. |
-| **3D Engine** | **React Three Fiber** | Visualizes the execution of the graph (Agents moving, typing, interacting). |
-| **State Manager** | **Zustand** | Syncs the 2D Graph structure (Blueprint) with the 3D Scene (Simulation). |
-
-### Frontend Structure
-
-```text
-src/
-├── editors/         # The 2D BPMN Interface
-│   ├── Blueprint.jsx       # The React Flow Canvas
-│   ├── nodes/              # Custom Nodes (AgentNode, StartNode)
-│   ├── inspector/          # The RPG Configuration Panel
-│   │   ├── IdentityTab.jsx # Skin selector, Name
-│   │   ├── BrainTab.jsx    # Markdown Editor (Monaco)
-│   │   └── SkillsTab.jsx   # Hex Grid & Ralph Toggle
-│   └── hooks/              # useGraphValidation.js
-├── canvas/          # The 3D Simulation
-│   ├── World.jsx           # The Building
-│   └── AgentAvatar.jsx     # 3D Representation (Dynamic Skin)
-└── stores/          # State
-    └── useWorkflowStore.js # Holds the JSON Graph definition
+    Engine --"6. Events (Node Start, Output)"--> SocketServer
+    SocketServer -.->|7. Real-time Sync| SocketClient
+    SocketClient -->|8. Animate Avatar| Sim
 
 ```
 
 ---
 
-## 🧠 2. Backend (The Dynamic Orchestrator)
+## 🧠 Backend: The Dynamic Graph Engine
 
-The backend moves away from hardcoded flows to a **Dynamic Graph Architecture**. It acts as a factory that builds software teams on demand.
+The core is no longer a static script. It is a **Graph Compiler**.
 
-| Component | Technology | Why this choice? |
-| --- | --- | --- |
-| **API Server** | **FastAPI** | Async support for WebSockets. |
-| **Graph Engine** | **LangGraph** | Enables cyclic graphs (Loops), conditional edges (If/Else), and state persistence. Crucial for the "Ralph Loop". |
-| **Agent Core** | **CrewAI** | Used to define the *Personas* (Role, Goal, Backstory) injected into the graph nodes. |
-| **LLM Connector** | **LangChain** | Standard interface for Ollama. |
+### 1. Technology Choice: LangGraph
 
-### Backend Structure
+We use LangGraph (built on LangChain) because it natively supports:
 
-```text
-app/
-├── core/
-│   ├── graph_builder.py # Parses JSON -> LangGraph object
-│   └── socket_manager.py
-├── agents/              # Dynamic Agent Generator
-│   └── factory.py       # Creates Agent() instances from JSON config
-├── middleware/
-│   └── ralph_protocol.py # Interceptor logic for validation loops
-├── tools/               # Modular Skills
-│   ├── design_tools.py  # Image Gen, CSS Linter
-│   └── dev_tools.py     # File I/O, Code Execution
-└── main.py
+* **Cyclic Flows:** `Dev -> QA -> Dev` loops (impossible in standard DAGs).
+* **Persistence:** Saving the state of the conversation at every step.
+* **Human-in-the-loop:** Pausing execution to wait for user approval (UI Interaction).
+
+### 2. The Compilation Process
+
+When the user clicks "Run" in the UI, the Backend receives a JSON describing nodes and links. The `GraphCompiler` transforms this into executable Python code:
+
+1. **Iterate Nodes:** For each node in JSON, create a `LangChain Agent` with specific tools.
+2. **Iterate Edges:** Add connections using `workflow.add_edge(source, target)`.
+3. **Handle Conditionals:** If a node has a "Router" or "Ralph Protocol" enabled, add a `conditional_edge`.
+
+### 3. The "Ralph" Protocol (Validation Loop)
+
+This is implemented as a **Conditional Edge** in LangGraph.
+
+```python
+# Pseudo-code logic in the Engine
+def ralph_router(state):
+    last_message = state['messages'][-1]
+    if "APPROVED" in last_message.content:
+        return "merge_node"
+    else:
+        return "developer_node" # <--- The Loop Back
+
+workflow.add_conditional_edges(
+    "qa_agent",
+    ralph_router,
+    {"merge_node": "github_merge", "developer_node": "developer"}
+)
 
 ```
 
 ---
 
-## 💾 3. Data Protocol (The Blueprint)
+## 🎨 Frontend: The Dual View
 
-The communication between Frontend and Backend relies on a strict **JSON Schema**. This object describes the "RPG Stats" of every agent.
+The frontend manages two synchronized representations of the same data.
 
-**Example Payload (Sent to Backend):**
+### 1. The Blueprint (React Flow)
+
+* **Role:** Configuration & Logic Design.
+* **Data:** Handles the `nodes` and `edges` state.
+* **Inspector:** Manages the "RPG Stats" (Markdown context, Skin ID, Skills).
+
+### 2. The Simulation (React Three Fiber)
+
+* **Role:** Visualization & Feedback.
+* **Logic:** It is **dumb**. It only reacts to WebSocket events.
+* *Event:* `NODE_ACTIVE: { id: "agent_dev", action: "typing" }`
+* *Reaction:* Find Avatar with ID "agent_dev" -> Play "Typing" Animation.
+
+
+
+### 3. The Designer's Mockup View
+
+* A specialized overlay that listens for `ARTIFACT_GENERATED` events.
+* When the **Designer Agent** outputs HTML, this view renders it inside a sandboxed `<iframe>` for safety.
+
+---
+
+## 💾 Data Structures
+
+### 1. The Graph Payload (JSON)
+
+Sent from Frontend to Backend to start a run.
 
 ```json
 {
-  "workflow_id": "custom_team_v1",
+  "graph_id": "project_alpha",
   "nodes": [
     {
       "id": "node_1",
-      "type": "agent_persona",
+      "type": "agent",
       "config": {
-        "identity": {
-          "name": "Sarah",
-          "role": "Lead Frontend",
-          "skin_id": "cyberpunk_female_01" 
-        },
-        "brain": {
-          "context_markdown": "## Directive\nYou are a React Expert. You strictly use Functional Components.",
-          "temperature": 0.7
-        },
-        "skills": {
-          "capabilities": ["web_search", "write_file", "generate_image"],
-          "ralph_validation_enabled": true 
-        }
+        "role": "Designer",
+        "skin": "artist_01",
+        "system_prompt": "You are a UI expert...",
+        "skills": ["html_render"],
+        "validation_required": true
+      }
+    },
+    {
+      "id": "node_2",
+      "type": "agent",
+      "config": {
+        "role": "Developer",
+        "skin": "coder_hoodie",
+        "skills": ["python_repl", "github_push"]
       }
     }
   ],
   "edges": [
-    { "source": "start", "target": "node_1" }
+    { "source": "node_1", "target": "node_2" }
   ]
 }
 
 ```
 
+### 2. The WebSocket Events
+
+Sent from Backend to Frontend during execution.
+
+| Event Type | Payload | Frontend Action |
+| --- | --- | --- |
+| `GRAPH_START` | `{ run_id: "xyz" }` | Switch to 3D View, Lock Edit Mode. |
+| `NODE_ENTER` | `{ node_id: "node_1" }` | Avatar "Thinking" animation. Camera Focus (Optional). |
+| `TOOL_START` | `{ tool: "github", input: "..." }` | Show icon over Avatar head (e.g., Octocat icon). |
+| `LOG_STREAM` | `{ content: "Writing code..." }` | Append text to HUD Console. |
+| `ARTIFACT` | `{ type: "html", content: "..." }` | Open Mockup Preview Window. |
+| `RALPH_REJECT` | `{ reason: "Syntax Error" }` | Flash Avatar Red. Play "Error" Sound. |
+
 ---
 
-## 🤖 4. Artificial Intelligence (Local)
+## 📂 File Structure (Monorepo)
 
-* **Inference:** Ollama (localhost:11434).
-* **Dynamic Loading:** The backend parses the `config.skills` list to decide which model to load (e.g., if "Python" skill is selected -> load `codellama`, otherwise `llama3`).
-
----
-
-## 🔄 5. Execution Flow
-
-1. **Design:** User draws nodes in React Flow.
-2. **Configure:** User clicks a node, opens Inspector, selects "Robot Skin", writes Markdown prompt, and toggles "Ralph Validation".
-3. **Compile:** Frontend converts the diagram to the JSON Payload above.
-4. **Build:** Python iterates through the JSON:
-* *Factory:* Spawns a CrewAI Agent with the Markdown as `backstory`.
-* *Ralph Check:* If `ralph_validation_enabled` is true, creates a subgraph with a QA Validator.
-
-
-5. **Run:** The graph executes.
-* *Step 1:* Agent runs.
-* *Step 2:* WebSocket sends `NODE_ACTIVE` event.
-* *Step 3:* 3D Avatar plays animation based on `skin_id`.
-
-
-
-```
+```bash
+nexushq/
+├── frontend/                  # React Application
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Blueprint/     # React Flow Editor
+│   │   │   ├── Simulation/    # R3F 3D Scene
+│   │   │   └── Inspector/     # RPG Configuration Panel
+│   │   └── stores/            # Zustand (Graph State + WebSocket)
+│
+├── backend/                   # Python Application
+│   ├── app/
+│   │   ├── compiler/          # JSON to LangGraph Builder
+│   │   │   └── builder.py     # The magic happens here
+│   │   ├── agents/            # Personas
+│   │   │   └── personas.py    # Template for "Designer", "Dev", "PO"
+│   │   ├── tools/             # Capabilities
+│   │   │   ├── github.py      # PyGithub wrapper
+│   │   │   └── filesystem.py  # Workspace I/O
+│   │   └── engine/
+│   │       └── runner.py      # LangGraph execution loop
+│   ├── workspace/             # Local sandbox for agents
+│   └── main.py                # FastAPI Entrypoint
 
 ```
