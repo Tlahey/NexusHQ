@@ -37,8 +37,9 @@
     - [ ] Create `graph_compiler.py`: A parser that reads JSON and builds a `StateGraph` object dynamically.
 
 - [ ] **2.2. Dynamic Agent Factory**
-    - [ ] Create a factory function to spawn Agents based on config (Role, System Prompt).
-    - [ ] **The "Ralph" Logic:** Implement a conditional edge in LangGraph that checks output quality. If rejected, loop back to the previous node.
+    - [ ] Create a factory function to spawn Agents based on config.
+    - [ ] **Model Routing:** Ensure the factory respects the specific `model_name` sent by the frontend for each agent (don't use a global default).
+    - [ ] **The "Ralph" Logic:** Implement a conditional edge in LangGraph.
 
 - [ ] **2.3. Tool Implementation (Skills)**
     - [ ] **FileSystem:** `FileRead`, `FileWrite`.
@@ -56,12 +57,15 @@
 
 - [ ] **3.2. The "Inspector" Panel (RPG Style)**
     - [ ] Build a sliding side-panel (Drawer) triggered on Node click.
-    - [ ] **Tab 1: Identity & Skin:** Carousel to select 3D models (Robot, Suit, Hoodie).
-    - [ ] **Tab 2: Brain:** Markdown editor for the System Prompt (Backstory).
-    - [ ] **Tab 3: Skills:** Visual grid to toggle tools (Git, Python, Search) and the "Ralph Protocol" switch.
+    - [ ] **Tab 1: Identity & Skin:** Carousel to select 3D models.
+    - [ ] **Tab 2: Brain & Model (The Intelligence):**
+        - [ ] **Model Selector:** A dropdown fetching installed models from Ollama (`GET /api/tags`).
+        - [ ] **Smart Hints:** Display a "Recommended" badge based on the Role (e.g., if Role = Dev, suggest `deepseek-coder` or `codellama`).
+        - [ ] **System Prompt:** Markdown editor for the Backstory.
+    - [ ] **Tab 3: Skills:** Visual grid to toggle tools and Ralph Protocol.
 
 - [ ] **3.3. Graph Serialization**
-    - [ ] Implement `Export to JSON` function to send the blueprint to the Backend.
+    - [ ] Include the specific `model_name` in the JSON payload sent to the backend.
 
 ---
 
