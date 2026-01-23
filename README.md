@@ -7,14 +7,18 @@
 ![Stack](https://img.shields.io/badge/stack-React_Three_Fiber_|_FastAPI_|_Ollama-black)
 ![Status](https://img.shields.io/badge/status-Concept_Initialization-orange)
 
-## 💡 The Vision
+## 💡 The Vision: Modular Agentic BPMN
 
-**NexusHQ** reimagines how we interact with LLMs. Instead of a linear chat window, we introduce a **spatial management system** modeled as a virtual headquarters.
+**NexusHQ** is not just a fixed team; it is a **dynamic workflow builder**.
+We bring the **BPMN (Business Process Model and Notation)** concept to AI orchestration.
 
-- **The Building:** A global view of all your ongoing projects. Each "Room" represents a specific repository or task force.
-- **The Workforce:** Agents are represented as 3D avatars. You can see them working, thinking, or waiting for feedback.
-- **The Workflow:** A gamified experience where you assign "Skills" to agents (e.g., *Python Expert*, *SEO Wizard*) and watch them execute complex pipelines autonomously.
-
+- **Draw your Strategy:** Use the integrated Node Editor to design your workflow visually.
+- **Modular Blocks:** Drag & drop blocks like "LLM Agent", "Human Validation", "Python Tool", or "API Call".
+- **Infinite Combinations:**
+    - *Scenario A:* User (You) -> Developer Agent -> User (Validation).
+    - *Scenario B:* PO -> Dev -> QA -> Dev (Loop) -> Manager.
+    - *Scenario C:* Research Agent -> Summarizer Agent -> Email Tool.
+- **3D Visualization:** Once the graph is designed, switch to "3D View" to watch the agents execute the graph physically in the building.
 **Target:** 100% Local, 100% Open Source, Privacy-First.
 
 ## 🏗️ Architecture
