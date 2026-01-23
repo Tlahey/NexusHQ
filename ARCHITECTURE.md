@@ -4,106 +4,157 @@ This document details the technology choices, software architecture, and data fl
 
 ## 🔭 Overview
 
-The project relies on a **decoupled client-server architecture** designed for local performance and an immersive user experience.
+The project relies on a **decoupled client-server architecture** designed for modular workflow creation and 3D visualization.
 
-* **Frontend:** A Single Page Application (SPA) acting as a real-time 3D rendering engine.
-* **Backend:** An asynchronous API that maintains agent state and manages execution loops.
+* **Frontend:** A dual-mode SPA: **Blueprint Mode** (BPMN Editor) and **Simulation Mode** (3D Render).
+* **Backend:** A dynamic graph engine capable of executing custom user-defined workflows.
 * **AI Engine:** Pure local inference via Ollama.
 
 ```mermaid
 graph TD
-    subgraph "Local Machine (User PC)"
-        Browser[Web Browser]
-        Server[Python Server]
-        Ollama[Ollama Service]
+    subgraph "Frontend (React)"
+        Editor[React Flow: BPMN Editor]
+        Visualizer[R3F: 3D Simulation]
+        Store[Zustand: Global State]
     end
 
-    Browser -- "WebSocket (Events)" --> Server
-    Browser -- "HTTP (Init/Config)" --> Server
-    
-    Server -- "LLM Prompts" --> Ollama
-    Ollama -- "Inference Tokens" --> Server
-    
-    subgraph "Frontend Tech"
-        React[React 18]
-        R3F[React Three Fiber]
-        Zustand[Zustand Store]
-    end
-    
-    subgraph "Backend Tech"
-        FastAPI[FastAPI]
-        CrewAI[CrewAI]
-        LangChain[LangChain]
+    subgraph "Backend (Python)"
+        API[FastAPI]
+        GraphEngine[LangGraph: Execution Engine]
+        AgentFactory[CrewAI: Agent Spawner]
     end
 
-🎨 1. Frontend (The Visualizer)
-The frontend is not just a dashboard; it is an interactive 3D environment (similar to a management video game).
-| Component | Technology | Why this choice? |
-|---|---|---|
-| Framework | React 18 (Vite) | Rich ecosystem, fast HMR via Vite. |
-| 3D Engine | React Three Fiber (R3F) | Declarative abstraction of Three.js. Allows managing 3D elements as React components. |
-| 3D Helpers | Drei | Collection of utilities (Cameras, 3D Text, Environments). |
-| State Manager | Zustand | Lighter than Redux. Handles "transient" state (high frequency) needed for 3D animations without unnecessary re-renders. |
-| UI Overlay | TailwindCSS + Radix UI | For the 2D interface (HUD) overlaid on the 3D scene (buttons, consoles, logs). |
-| Animation | React Spring | To interpolate agent movements smoothly (physics-based). |
-Frontend Structure
+    User([User]) -->|Designs Workflow| Editor
+    Editor -->|JSON Blueprint| API
+    API -->|Builds Graph| GraphEngine
+    GraphEngine -->|Instantiates| AgentFactory
+    AgentFactory <-->|Inference| Ollama[Ollama Service]
+    
+    GraphEngine -->|Real-time Events| Visualizer
+```
+
+---
+
+## 🎨 1. Frontend (The Builder & Visualizer)
+
+We use a split-view approach: **Design** (2D) and **Observe** (3D).
+
+| Component | Technology | Role |
+| --- | --- | --- |
+| **BPMN Editor** | **React Flow** | The node-based interface to design workflows, drag & drop agents, and connect logic. |
+| **3D Engine** | **React Three Fiber** | Visualizes the execution of the graph (Agents moving between nodes). |
+| **State Manager** | **Zustand** | Syncs the 2D Graph structure (Blueprint) with the 3D Scene (Simulation). |
+| **UI Overlay** | **TailwindCSS + Radix UI** | For the HUD, sidebars, and property inspectors. |
+
+### Frontend Structure
+
+```text
 src/
-├── canvas/          # Everything living inside the 3D <Canvas>
-│   ├── World.jsx    # The Building (Room container)
-│   ├── Agent.jsx    # The 3D Avatar (Mesh + Animations)
-│   └── Effects.jsx  # Post-processing (Bloom, lights)
-├── hud/             # The 2D Overlay Interface
-│   ├── Terminal.jsx # Log console
-│   └── SkillTree.jsx# Skill Drag & Drop system
-└── stores/          # Global State (Zustand)
-    └── useGameStore.js
+├── editors/         # The 2D BPMN Interface
+│   ├── Blueprint.jsx       # The React Flow Canvas
+│   ├── nodes/              # Custom Nodes (AgentNode, RouterNode, ToolNode)
+│   └── hooks/              # useGraphValidation.js
+├── canvas/          # The 3D Simulation
+│   ├── World.jsx           # The Building
+│   └── AgentAvatar.jsx     # 3D Representation
+└── stores/          # State
+    └── useWorkflowStore.js # Holds the JSON Graph definition
 
-🧠 2. Backend (The Orchestrator)
-The backend is the brain. It must be capable of handling multiple agents in parallel without blocking the user interface.
+```
+
+---
+
+## 🧠 2. Backend (The Dynamic Orchestrator)
+
+The backend moves away from hardcoded flows to a **Dynamic Graph Architecture**.
+
 | Component | Technology | Why this choice? |
-|---|---|---|
-| Language | Python 3.10+ | The industrial standard for AI and Agentic workflows. |
-| API Server | FastAPI | Native Async support (async/await) essential for WebSockets and LLM wait times. |
-| Agent Framework | CrewAI | Natively handles roles, hierarchical delegation, and sequential processes. |
-| LLM Connector | LangChain | Standardized interface to communicate with Ollama. |
-| Communication | WebSockets | To push agent states (Thinking, Typing, Error) to the frontend in real-time. |
-Backend Structure
-app/
-├── agents/          # Persona definitions
-│   ├── po.py        # Product Owner logic
-│   ├── dev.py       # Developer logic
-│   └── qa.py        # QA logic
-├── tools/           # Agent "Hands"
-│   ├── file_io.py   # Read/Write files
-│   └── search.py    # Web Search (optional)
-├── api/
-│   └── socket.py    # WebSocket Event Handler
-└── main.py          # FastAPI Entry Point
+| --- | --- | --- |
+| **API Server** | **FastAPI** | Async support for WebSockets. |
+| **Graph Engine** | **LangGraph** | Enables cyclic graphs (Loops), conditional edges (If/Else), and state persistence. |
+| **Agent Core** | **CrewAI** | Used to define the *Personas* (Role, Goal, Backstory) injected into the graph nodes. |
+| **LLM Connector** | **LangChain** | Standard interface for Ollama. |
 
-🤖 3. Artificial Intelligence (Local)
-The project follows a Local-First philosophy. No data leaves the machine, ensuring privacy and zero cost.
- * Inference Engine: Ollama (must run in the background on port 11434).
- * Recommended Models:
-   * Llama-3-8B: Excellent intelligence/speed ratio for the PO and QA.
-   * Mistral: Very fast for simple tasks.
-   * CodeLlama or DeepSeek-Coder: Specialized for the "Developer" agent.
-🔄 4. Data Flow (The Loop)
-Here is how a user action traverses the stack:
- * Input: User types a request in the React HUD ("Create a Python backup script").
- * Transmission: React sends a JSON payload via WebSocket to the Backend.
- * Orchestration:
-   * FastAPI receives the message and instantiates a Crew.
-   * The PO agent analyzes the request.
-   * Event: Backend sends status: "PO_THINKING" -> 3D PO Avatar lights up.
- * Execution:
-   * PO delegates to Dev.
-   * Dev generates code via Ollama.
-   * Event: Backend sends status: "DEV_TYPING" -> Dev Avatar plays typing animation.
- * Validation:
-   * The QA agent reads the generated file.
-   * If OK: status: "SUCCESS" -> Confetti in 3D scene.
-   * If KO: status: "REJECTED" -> Red laser from QA to Dev -> Loop restarts.
-📦 Deployment & Environment
-Currently, the project is designed to run on localhost.
- * Docker (Optional): A docker-compose.yml is provided to launch the Backend and Frontend together.
- * GPU Note: For Ollama to access the GPU from Docker, specific configuration (NVIDIA Container Toolkit) is required. It is often simpler to run Ollama on the host machine.
+### Backend Structure
+
+```text
+app/
+├── core/
+│   ├── graph_builder.py # Parses JSON -> LangGraph object
+│   └── socket_manager.py
+├── agents/          # Dynamic Agent Generator
+│   └── factory.py   # Creates Agent() instances from JSON config
+├── tools/           # Modular Skills
+│   ├── design_tools.py # Image Gen, CSS Linter
+│   └── dev_tools.py    # File I/O, Code Execution
+└── main.py
+
+```
+
+---
+
+## 💾 3. Data Protocol ( The Blueprint)
+
+The communication between Frontend and Backend relies on a strict **JSON Schema** describing the BPMN graph.
+
+**Example Payload (Workflow Definition):**
+
+```json
+{
+  "workflow_id": "landing_page_gen",
+  "nodes": [
+    {
+      "id": "node_1",
+      "type": "agent",
+      "data": {
+        "role": "Designer",
+        "goal": "Create a color palette",
+        "model": "llama3",
+        "tools": ["dalle_mock", "web_search"]
+      }
+    },
+    {
+      "id": "node_2",
+      "type": "agent",
+      "data": {
+        "role": "Developer",
+        "goal": "Write CSS variables",
+        "model": "codellama"
+      }
+    }
+  ],
+  "edges": [
+    { "source": "node_1", "target": "node_2", "type": "default" }
+  ]
+}
+
+```
+
+---
+
+## 🤖 4. Artificial Intelligence (Local)
+
+* **Inference:** Ollama (localhost:11434).
+* **Dynamic Loading:** The backend pulls the model specified in the Node JSON (e.g., `codellama` for Dev nodes, `llama3` for PM nodes).
+
+---
+
+## 🔄 5. Execution Flow
+
+1. **Design:** User draws nodes in React Flow.
+2. **Compile:** Frontend converts the diagram to JSON and sends it to `POST /api/workflow/start`.
+3. **Build:** Python iterates through the JSON nodes:
+* For each "Agent Node", it instantiates a CrewAI Agent.
+* For each "Link", it creates a LangGraph Edge.
+
+
+4. **Run:** The graph executes.
+* *Step 1:* Designer Agent runs -> WebSocket event `NODE_ACTIVE: node_1`.
+* *Step 2:* 3D Avatar for Node 1 lights up.
+* *Step 3:* Task completes -> Output passed to Node 2.
+
+
+
+```
+
+```
