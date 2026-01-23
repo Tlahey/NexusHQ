@@ -100,7 +100,33 @@ This document outlines the step-by-step development plan for NexusHQ.
 
 ---
 
-## 🕹️ Phase 5: User Interaction & Skills
+## 🧩 Phase 5: The Modular "Persona" System (BPMN)
+**Objective:** Move from hardcoded agents to a dynamic workflow builder where users define Roles (Designer, Architect) and Flows.
+
+- [ ] **5.1. The Node Editor (React Flow)**
+    - Install `reactflow` library.
+    - Create a `BlueprintEditor.jsx` view.
+    - Create a custom `AgentNode` component with inputs for:
+        - **Role:** (e.g., "UI Designer")
+        - **Goal:** (e.g., "Create a color palette")
+        - **Tools:** (Checkbox list: Search, FileWrite, ImageGen)
+
+- [ ] **5.2. Dynamic Backend Instantiation**
+    - Refactor `main.py` to accept a JSON payload describing the graph.
+    - **Logic:** Instead of loading `class PO`, the backend iterates through the JSON nodes and spawns generic `Agent()` instances with the user's parameters.
+
+- [ ] **5.3. Specialized Skills (The Toolbelt)**
+    - **Image Gen Tool:** Integrate a connector (DALL-E or Local Stable Diffusion) for the "Designer" persona.
+    - **Style Guide Tool:** A custom prompt tool that forces output in CSS/JSON format.
+
+- [ ] **5.4. Graph Execution (LangGraph)**
+    - Implement the logic to execute the graph edges:
+        - *Sequential:* Node A -> Node B.
+        - *Conditional:* Node A -> (If Error) -> Node A.
+
+---
+
+## 🕹️ Phase 6: User Interaction & Skills
 **Objective:** Allow the user to control the simulation.
 
 - [ ] **5.1. Input System**
@@ -117,7 +143,7 @@ This document outlines the step-by-step development plan for NexusHQ.
 
 ---
 
-## ✨ Phase 6: Polish & Optimization
+## ✨ Phase 7: Polish & Optimization
 **Objective:** Make it look good and run smooth.
 
 - [ ] **6.1. Performance Tuning**
